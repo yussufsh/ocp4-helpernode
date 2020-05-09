@@ -10,3 +10,6 @@ ocp_client: "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.4.3/ope
 ocp_installer: "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.4.3/openshift-install-linux-4.4.3.tar.gz"
 chars: (\\_|\\$|\\\|\\/|\\=|\\)|\\(|\\&|\\^|\\%|\\$|\\#|\\@|\\!|\\*)
 ppc64le: false
+pxe_config: true
+grub_config: true
+nmcli_config: true

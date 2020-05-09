@@ -121,6 +121,7 @@
       url: "{{ ocp_bios}}"
       dest: /var/www/html/install/bios.raw.gz
       mode: 0555
+    when: ocp_bios
       
   - name: Start firewalld service
     systemd:
@@ -213,14 +214,14 @@
       url: "{{ ocp_initramfs }}"
       dest: /var/lib/tftpboot/rhcos/initramfs.img
       mode: 0555
-    when: not staticips
+    when: not staticips and ocp_initramfs
 
   - name: Downloading OCP4 installer kernel
     get_url:
       url: "{{ ocp_install_kernel }}"
       dest: /var/lib/tftpboot/rhcos/kernel
       mode: 0555
-    when: not staticips
+    when: not staticips and ocp_install_kernel
 
   - name: Generate pxe config files
     block:
@@ -257,7 +258,7 @@
       with_items: "{{ workers | lower }}"
       notify:
         - restart tftp
-    when: not staticips and not ppc64le
+    when: not staticips and not ppc64le and pxe_config
 
   - name: Generate grub2 config files
     block:
@@ -268,7 +269,6 @@
           default=0
           fallback=1
           timeout=1
-
     - name: generate grub entry (bootstrap)
       vars:
         role: bootstrap
@@ -288,7 +288,7 @@
         mac: "{{ item.macaddr }}"
       include_tasks: generate_grub.yml
       with_items: "{{ workers }}"
-    when: not staticips and ppc64le
+    when: not staticips and ppc64le and grub_config
 
 
   - name: Installing TFTP Systemd helper
@@ -318,16 +318,24 @@
     with_items:
       - "{{ services }}"
 
-  - name: Starting DHCP/PXE services
+  - name: Starting DHCP services
     service:
       name: "{{ item }}"
       enabled: yes
       state: started
     with_items:
       - dhcpd
+    when: not staticips
+
+  - name: Starting PXE services
+    service:
+      name: "{{ item }}"
+      enabled: yes
+      state: started
+    with_items:
       - tftp
       - helper-tftp
-    when: not staticips
+    when: not staticips and pxe_config
 
   - name: Unmasking Services
     systemd:
@@ -436,16 +444,20 @@
   - name: Get network device system name
     shell: "nmcli -t dev show {{ networkifacename }} | grep GENERAL.CONNECTION | cut -d: -f2"
     register: devicesystemname
+    when: nmcli_config
 
   - name: Setting network device system name as a fact
     set_fact:
       dsname: "{{ devicesystemname.stdout }}"
+    when: nmcli_config
 
   - name: Setting DNS server ip on network interface "{{ dsname }}" to 127.0.0.1
     shell: 'nmcli con mod "{{ dsname }}" ipv4.dns 127.0.0.1'
+    when: nmcli_config
 
   - name: Setting DNS search path on network interface "{{ dsname }}" to "{{ dns.clusterid }}.{{ dns.domain | lower }}"
     shell: 'nmcli con mod  "{{ dsname }}" ipv4.dns-search {{ dns.clusterid }}.{{ dns.domain | lower }}'
+    when: nmcli_config
 
   - name: Restarting NetworkManager
     service:
@@ -453,6 +465,7 @@
       state: restarted
     with_items:
       - NetworkManager
+    when: nmcli_config
  
   - name:  Information about this install
     debug:
