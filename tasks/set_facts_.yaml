@@ -25,8 +25,11 @@
   - set_fact:
       dhcppkgs:
         - dhcp
-        - syslinux
         - tftp-server
+
+  - set_fact:
+      syslinuxpkgs:
+        - syslinux
   
   - set_fact:
       owner: nfsnobody
